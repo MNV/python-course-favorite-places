@@ -23,7 +23,6 @@ class TestPlacesRepository(TestRepositoryBase):
 
         yield PlacesRepository(session)
 
-    @pytest.mark.asyncio
     async def test_find(self, repository, fixture_place):
         """
         Тестирование метода поиска записи по первичному ключу.
