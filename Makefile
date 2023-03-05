@@ -20,5 +20,11 @@ lint:
 test:
 	docker compose run favorite-places-app pytest --cov=/src --cov-report html:htmlcov --cov-report term --cov-config=/src/tests/.coveragerc -vv
 
+database:
+	docker compose up -d favorite-places-db
+
+migrate:
+	docker compose run favorite-places-app alembic upgrade head
+
 # запуск всех функций поддержки качества кода
 all: format lint test
