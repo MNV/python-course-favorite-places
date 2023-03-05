@@ -1,0 +1,11 @@
+#+title: Report
+
+* Определение по ip
+[[file:docs/img/Screenshot 2023-03-05 at 00-01-14 API системы Favorite Places Service - Swagger UI.png]]
+[[file:docs/img/Screenshot 2023-03-05 at 00-00-01 API системы Favorite Places Service - Swagger UI.png]]
+[[file:docs/img/2023-03-05_00-01.png]]
+
+* Пагинация
+[[file:docs/img/pagination.png]]
+* Результаты =make all=
+[[file:docs/img/2023-03-05_13-31.png]]

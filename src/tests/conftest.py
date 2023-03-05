@@ -1,11 +1,19 @@
+import os
+from pathlib import Path
+from uuid import uuid4
+
 import pytest_asyncio
 from httpx import AsyncClient
 from pytest_mock import MockerFixture
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy_utils import create_database, drop_database
+from sqlmodel import SQLModel
 
 from integrations.db.session import get_session
 from main import app
 from settings import settings
+
+PROJECT_PATH = Path(__file__).parent.parent.resolve()
 
 
 @pytest_asyncio.fixture
@@ -17,7 +25,15 @@ async def session():
     :return:
     """
 
-    db_engine = create_async_engine(settings.database_url, echo=True, future=True)
+    db_id = uuid4().hex
+    db_name = settings.database_url + db_id
+    os.environ["DATABASE_URL"] = db_name
+    create_database(settings.database_sync + db_id)
+    db_engine = create_async_engine(db_name, echo=True, future=True)
+
+    async with db_engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.create_all)
+
     connection = await db_engine.connect()
     transaction = await connection.begin()
 
@@ -31,6 +47,7 @@ async def session():
     await async_session.close()
     await transaction.rollback()
     await connection.close()
+    drop_database(settings.database_sync + db_id)
 
 
 @pytest_asyncio.fixture
