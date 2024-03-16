@@ -1,8 +1,9 @@
 from typing import Annotated
-from fastapi import APIRouter, Depends, Query, Body, Request, status
+
+from fastapi import APIRouter, Body, Depends, Query, Request, status
 
 from exceptions import ApiHTTPException, ObjectNotFoundException
-from models.places import Place, Description
+from models.places import Description, Place
 from schemas.places import PlaceResponse, PlacesListResponse, PlaceUpdate
 from schemas.routes import MetadataTag
 from services.places_service import PlacesService
@@ -38,7 +39,9 @@ async def get_list(
     :return:
     """
 
-    return PlacesListResponse(data=await places_service.get_places_list(offset=offset, limit=limit))
+    return PlacesListResponse(
+        data=await places_service.get_places_list(offset=offset, limit=limit)
+    )
 
 
 @router.get(
@@ -139,7 +142,8 @@ async def delete(primary_key: int, places_service: PlacesService = Depends()) ->
 async def create_auto(
     request: Request,
     description: Description,
-    places_service: PlacesService = Depends()) -> PlaceResponse:
+    places_service: PlacesService = Depends(),
+) -> PlaceResponse:
     """
     Создание нового объекта любимого места с автоматическим определением координат.
 
@@ -154,9 +158,11 @@ async def create_auto(
             status_code=status.HTTP_400_BAD_REQUEST, detail="IP-адрес не определён"
         )
 
-    if primary_key := await places_service.create_place_from_ip(ip=request.client.host, description=description.description):
+    if primary_key := await places_service.create_place_from_ip(
+        ip=request.client.host, description=description.description
+    ):
         return PlaceResponse(data=await places_service.get_place(primary_key))
-    
+
     raise ApiHTTPException(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         detail="Объект не был создан",

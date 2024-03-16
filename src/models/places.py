@@ -1,9 +1,9 @@
 from typing import Optional
 
+from pydantic import BaseModel
 from sqlmodel import Field, SQLModel
 
 from models.mixins import TimeStampMixin
-from pydantic import BaseModel
 
 
 class Place(SQLModel, TimeStampMixin, table=True):

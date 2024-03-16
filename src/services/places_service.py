@@ -1,7 +1,10 @@
 import logging.config
+from ipaddress import ip_address
 from typing import Optional
 
+import geocoder
 from fastapi import Depends
+from geocoder.ipinfo import IpinfoQuery
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,11 +16,6 @@ from models import Place
 from repositories.places_repository import PlacesRepository
 from schemas.places import PlaceUpdate
 from settings import settings
-
-from ipaddress import ip_address
-
-import geocoder
-from geocoder.ipinfo import IpinfoQuery
 
 logging.config.fileConfig("logging.conf")
 logger = logging.getLogger()
@@ -90,16 +88,16 @@ class PlacesService:
         new_place = Place(**place.dict())
 
         # при изменении координат – обогащение данных путем получения дополнительной информации от API
-        if new_place.latitude != None or new_place.longitude != None:
+        if new_place.latitude is not None or new_place.longitude is not None:
             # Если указано только одно значение, нужно получить текущие значения
-            if not (new_place.latitude != None and new_place.longitude != None):
+            if not (new_place.latitude is not None and new_place.longitude is not None):
                 if current_place := await self.get_place(primary_key):
-                    if new_place.latitude == None:
+                    if new_place.latitude is None:
                         new_place.latitude = current_place.latitude
-                    
-                    if new_place.longitude == None:
+
+                    if new_place.longitude is None:
                         new_place.longitude = current_place.longitude
-                
+
             await self._fill_location_info(new_place)
 
         matched_rows = await self.places_repository.update_model(
@@ -129,26 +127,24 @@ class PlacesService:
     async def create_place_from_ip(self, ip: str, description: str) -> Optional[int]:
         """
         Создание объекта любимого места по ip-адресу
-        
+
         :param ip: IP-адресс, используемый для определения локации
         :param description: Описание любимого места
         :return:
         """
 
-        g: IpinfoQuery = geocoder.ip('me' if ip_address(ip).is_private else ip)
+        g: IpinfoQuery = geocoder.ip("me" if ip_address(ip).is_private else ip)
 
         latitude, longitude = g.latlng
-        
-        return await self.create_place(Place(
-            latitude=latitude,
-            longitude=longitude,
-            description=description
-        ))
-        
+
+        return await self.create_place(
+            Place(latitude=latitude, longitude=longitude, description=description)
+        )
+
     async def _fill_location_info(self, place: Place) -> None:
         """
         Заполнить информацию о любимом месте через API
-        
+
         :param place: Объект для заполнения.
         """
         if location := await LocationClient().get_location(
@@ -157,11 +153,11 @@ class PlacesService:
             place.country = location.alpha2code
             place.city = location.city
             place.locality = location.locality
-            
+
     async def _publish_place_event(self, place: Place) -> None:
         """
         Опубликовать событие о новом месте в очередь для импорта мест RabbitMQ
-        
+
         :param place: Новое любимое место.
         """
         try:
@@ -177,4 +173,3 @@ class PlacesService:
                 "The message was not well-formed during publishing event.",
                 exc_info=True,
             )
-            
