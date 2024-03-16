@@ -21,6 +21,9 @@ tag_places = MetadataTag(
     response_model=PlacesListResponse,
 )
 async def get_list(
+    offset: int = Query(
+        0, gte=0, description="Количество объектов, которое необходимо пропустить"
+    ),
     limit: int = Query(
         20, gt=0, le=100, description="Ограничение на количество объектов в выборке"
     ),
@@ -34,7 +37,7 @@ async def get_list(
     :return:
     """
 
-    return PlacesListResponse(data=await places_service.get_places_list(limit=limit))
+    return PlacesListResponse(data=await places_service.get_places_list(offset=offset, limit=limit))
 
 
 @router.get(
