@@ -3,6 +3,7 @@ from typing import Optional
 from sqlmodel import Field, SQLModel
 
 from models.mixins import TimeStampMixin
+from pydantic import BaseModel
 
 
 class Place(SQLModel, TimeStampMixin, table=True):
@@ -21,3 +22,9 @@ class Place(SQLModel, TimeStampMixin, table=True):
     locality: Optional[str] = Field(
         title="Местонахождение", min_length=2, max_length=255
     )
+
+
+class Description(BaseModel):
+    """Модель для описания"""
+
+    description: str = Field(None, min_length=3, max_length=255)

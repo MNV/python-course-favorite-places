@@ -14,6 +14,11 @@ from repositories.places_repository import PlacesRepository
 from schemas.places import PlaceUpdate
 from settings import settings
 
+from ipaddress import ip_address
+
+import geocoder
+from geocoder.ipinfo import IpinfoQuery
+
 logging.config.fileConfig("logging.conf")
 logger = logging.getLogger()
 
@@ -125,3 +130,22 @@ class PlacesService:
         await self.session.commit()
 
         return matched_rows
+
+    async def create_place_from_ip(self, ip: str, description: str) -> Optional[int]:
+        """
+        Создание объекта любимого места по ip-адресу
+        
+        :param ip: IP-адресс, используемый для определения локации
+        :param description: Описание любимого места
+        :return:
+        """
+
+        g: IpinfoQuery = geocoder.ip('me' if ip_address(ip).is_private else ip)
+
+        latitude, longitude = g.latlng
+        
+        return await self.create_place(Place(
+            latitude=latitude,
+            longitude=longitude,
+            description=description
+        ))
