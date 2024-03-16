@@ -76,16 +76,20 @@
 
 Для инициализации миграций выполните следующую команду:
 
-    .. code-block::console
+    .. code-block:: console
+
         docker compose exec favorite-places-app alembic init -t async migrations
 
 Чтобы создать миграцию выполните следующую команду:
 
-    .. code-block::console
+    .. code-block:: console
+
         docker compose run favorite-places-app alembic revision --autogenerate  -m "your description"
+
 Чтобы применить созданные миграции выполните следующую команду:
 
-    .. code-block::console
+    .. code-block:: console
+
         docker compose run favorite-places-app alembic upgrade head
 
 Автоматизация
