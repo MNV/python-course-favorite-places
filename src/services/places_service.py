@@ -67,31 +67,14 @@ class PlacesService:
         """
 
         # обогащение данных путем получения дополнительной информации от API
-        if location := await LocationClient().get_location(
-            latitude=place.latitude, longitude=place.longitude
-        ):
-            place.country = location.alpha2code
-            place.city = location.city
-            place.locality = location.locality
+        await self._fill_location_info(place)
 
         primary_key = await self.places_repository.create_model(place)
         await self.session.commit()
 
         # публикация события о создании нового объекта любимого места
         # для попытки импорта информации по нему в сервисе Countries Informer
-        try:
-            place_data = CountryCityDTO(
-                city=place.city,
-                alpha2code=place.country,
-            )
-            EventProducer().publish(
-                queue_name=settings.rabbitmq.queue.places_import, body=place_data.json()
-            )
-        except ValidationError:
-            logger.warning(
-                "The message was not well-formed during publishing event.",
-                exc_info=True,
-            )
+        await self._publish_place_event(place)
 
         return primary_key
 
@@ -104,17 +87,29 @@ class PlacesService:
         :return:
         """
 
+        new_place = Place(**place.dict())
+
         # при изменении координат – обогащение данных путем получения дополнительной информации от API
-        # todo
+        if new_place.latitude != None or new_place.longitude != None:
+            # Если указано только одно значение, нужно получить текущие значения
+            if not (new_place.latitude != None and new_place.longitude != None):
+                if current_place := await self.get_place(primary_key):
+                    if new_place.latitude == None:
+                        new_place.latitude = current_place.latitude
+                    
+                    if new_place.longitude == None:
+                        new_place.longitude = current_place.longitude
+                
+            await self._fill_location_info(new_place)
 
         matched_rows = await self.places_repository.update_model(
-            primary_key, **place.dict(exclude_unset=True)
+            primary_key, **new_place.model_dump(exclude_unset=True)
         )
         await self.session.commit()
 
         # публикация события для попытки импорта информации
         # по обновленному объекту любимого места в сервисе Countries Informer
-        # todo
+        await self._publish_place_event(new_place)
 
         return matched_rows
 
@@ -149,3 +144,37 @@ class PlacesService:
             longitude=longitude,
             description=description
         ))
+        
+    async def _fill_location_info(self, place: Place) -> None:
+        """
+        Заполнить информацию о любимом месте через API
+        
+        :param place: Объект для заполнения.
+        """
+        if location := await LocationClient().get_location(
+            latitude=place.latitude, longitude=place.longitude
+        ):
+            place.country = location.alpha2code
+            place.city = location.city
+            place.locality = location.locality
+            
+    async def _publish_place_event(self, place: Place) -> None:
+        """
+        Опубликовать событие о новом месте в очередь для импорта мест RabbitMQ
+        
+        :param place: Новое любимое место.
+        """
+        try:
+            place_data = CountryCityDTO(
+                city=place.city,
+                alpha2code=place.country,
+            )
+            EventProducer().publish(
+                queue_name=settings.rabbitmq.queue.places_import, body=place_data.json()
+            )
+        except ValidationError:
+            logger.warning(
+                "The message was not well-formed during publishing event.",
+                exc_info=True,
+            )
+            
